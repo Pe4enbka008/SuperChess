@@ -75,5 +75,7 @@ private:
 	bool can_block_attack(int king_row, int king_col);
 	vector<std::pair<int, int>> find_attack_squares(int king_row, int king_col) const;
 
+	bool can_move_any_piece(int king_row, int king_col);
+
 }; // game
 

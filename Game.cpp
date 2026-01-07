@@ -86,10 +86,10 @@ void Game::main_loop()
 		{
 			if (this->is_current_player_in_checkmate())
 				return_code = CHECKMATE;    // code that the opposite king is checkmated
-			else if (this->is_current_player_in_stalemate())
-				return_code = STALEMATE;    // code that the opposite king is stalemated
 			else return_code = CHECK;   // code that the opposite king is attacked
 		} // if
+		else if (return_code < INCORRECT_PIECE && this->is_current_player_in_stalemate()) // check if opposite king isn't attacked and has no moves
+			return_code = STALEMATE;    // code that the opposite king is stalemated
 
 		msgFromGraphics = this->receive_input(return_code);	// send message to and get message from graphics
 		game_over = msgFromGraphics == "quit" || return_code == CHECKMATE;

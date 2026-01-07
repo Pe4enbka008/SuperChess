@@ -87,12 +87,4 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="chessgraphics\chessgraphics\Form1.resx">
-      <Filter>Resource Files</Filter>
-    </EmbeddedResource>
-    <EmbeddedResource Include="chessgraphics\chessgraphics\properties\Resources.resx">
-      <Filter>Resource Files</Filter>
-    </EmbeddedResource>
-  </ItemGroup>
 </Project>

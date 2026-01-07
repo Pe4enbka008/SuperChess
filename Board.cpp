@@ -49,10 +49,10 @@ Board::Board()
     pieces[7][5] = new Bishop('b');
 
     // queens and kings
-    pieces[0][4] = new Queen('w');
-    pieces[0][3] = new King('w');
-    pieces[7][4] = new Queen('b');
-    pieces[7][3] = new King('b');
+    pieces[0][3] = new Queen('w');
+    pieces[0][4] = new King('w');
+    pieces[7][3] = new Queen('b');
+    pieces[7][4] = new King('b');
 
 } // __init__
 
@@ -110,6 +110,8 @@ int Board::check_move(int start_row, int start_col, int end_row, int end_col) co
 {
     if (!this->is_in_range(start_row) || !this->is_in_range(start_col) || !this->is_in_range(end_row) || !this->is_in_range(end_col))
         return false;
+    if (start_row == end_row && start_col == end_col)
+		return ILLEGAL_MOVE;  // same space
 
     Piece* piece = this->pieces[start_row][start_col];
     bool can_move = piece->move(start_row, start_col, end_row, end_col);
@@ -161,6 +163,8 @@ int Board::check_eat(int start_row, int start_col, int end_row, int end_col) con
 {
     if (!this->is_in_range(start_row) || !this->is_in_range(start_col) || !this->is_in_range(end_row) || !this->is_in_range(end_col))
         return false;
+    if (start_row == end_row && start_col == end_col)
+        return ILLEGAL_MOVE;  // same space
 
     Piece* piece = this->pieces[start_row][start_col];
     bool can_move = piece->eat(start_row, start_col, end_row, end_col);
@@ -189,7 +193,7 @@ void Board::eat(int start_row, int start_col, int end_row, int end_col)
     this->pieces[start_row][start_col] = nullptr;
     delete(pieces[end_row][end_col]);   // ate
     this->pieces[end_row][end_col] = piece;
-} // check_eat
+} // eat
 
 
 
@@ -983,10 +987,10 @@ bool Board::can_block_attack(int king_row, int king_col)
 
     char king_colour = this->get_piece_at(king_row, king_col)->get_colour();
 
-    for (int start_row = 0; start_row < 8; start_row++)
-        for (int start_col = 0; start_col < 8; start_col++)
+    for (int piece_row = 0; piece_row < 8; piece_row++)
+        for (int piece_col = 0; piece_col < 8; piece_col++)
         {
-            Piece* chosen_piece = pieces[start_row][start_col];
+            Piece* chosen_piece = pieces[piece_row][piece_col];
             if (!chosen_piece || chosen_piece->get_colour() != king_colour) continue;  // wrong colour
 
             for (size_t i = 0; i < hit_spaces.size(); i++)  // walk through the saved the spaces
@@ -994,22 +998,22 @@ bool Board::can_block_attack(int king_row, int king_col)
                 int end_row = hit_spaces[i].first;
                 int end_col = hit_spaces[i].second;
 
-                if (!check_move(start_row, start_col, end_row, end_col) || !free_way(start_row, start_col, end_row, end_col))
+                if (check_move(piece_row, piece_col, end_row, end_col) == ILLEGAL_MOVE || !free_way(piece_row, piece_col, end_row, end_col))
                     continue; // cannot legally move
 
                 Piece* eaten_piece = nullptr;
                 if (this->piece_exists_at(end_row, end_col))
                 {
                     eaten_piece = this->get_piece_at(end_row, end_col)->clone();
-                    if (eaten_piece->get_colour() == king_colour)
+                    if (eaten_piece->get_colour() == king_colour || check_eat(piece_row, piece_col, end_row, end_col) == ILLEGAL_MOVE)  // because of PAWN
                         continue; // cannot capture own piece
-                    this->eat(start_row, start_col, end_row, end_col);
+                    this->eat(piece_row, piece_col, end_row, end_col);
                 } // if
                 else
-                    this->move(start_row, start_col, end_row, end_col);
+                    this->move(piece_row, piece_col, end_row, end_col);
 
                 bool still_in_check = is_king_attacked(king_row, king_col);
-                undo_move(start_row, start_col, end_row, end_col, eaten_piece);
+                undo_move(piece_row, piece_col, end_row, end_col, eaten_piece);
 
                 if (!still_in_check)
                     return true; // king saved
@@ -1041,7 +1045,7 @@ vector<std::pair<int, int>> Board::find_attack_squares(int king_row, int king_co
             Piece* piece = pieces[row][col];
             if (!piece || piece->get_colour() == king_colour) continue; // skip friendly
 
-            if ((check_move(row, col, king_row, king_col) || check_eat(row, col, king_row, king_col)) && free_way(row, col, king_row, king_col))
+            if (((check_move(row, col, king_row, king_col) == VALID) || (check_eat(row, col, king_row, king_col) == VALID)) && free_way(row, col, king_row, king_col))
                 attackers.push_back({ row, col });   // can eat/move on the space of the KING
         } // for
 
@@ -1101,11 +1105,55 @@ bool Board::is_king_in_stalemate(int king_row, int king_col)
 		return false;   // no king!
     if (this->is_king_attacked(king_row, king_col))
         return false;   // king is in check, not stalemate
-
-    bool can_escape = can_king_escape_check(king_row, king_col);   // works
-    bool can_block = can_block_attack(king_row, king_col);   // works
-	return !(can_escape || can_block);
+	return !can_move_any_piece(king_row, king_col);
 } // is_king_in_stalemate
 
 
-// The end :> of the file
+/// <summary>
+/// Checks if any piece can move or eat to resolve a stalemate
+/// (either by blocking the attack or capturing the attacker)
+/// </summary>
+/// <param name="king_row">row where king is - index-based (0-7)</param>
+/// <param name="king_col">col where king is - index-based (0-7)</param>
+/// <returns>True if any piece can legally move or eat, otherwise false</returns>
+bool Board::can_move_any_piece(int king_row, int king_col)
+{
+	char king_colour = this->get_piece_at(king_row, king_col)->get_colour();
+
+    for (int piece_row = 0; piece_row < 8; piece_row++)
+        for (int piece_col = 0; piece_col < 8; piece_col++)
+        {
+            Piece* chosen_piece = pieces[piece_row][piece_col];
+            if (!chosen_piece || chosen_piece->get_colour() != king_colour) continue;  // wrong colour
+
+            // possible moves:
+            for (int end_row = 0; end_row < 8; end_row++)
+                for (int end_col = 0; end_col < 8; end_col++)
+                {
+                    if (check_move(piece_row, piece_col, end_row, end_col) == ILLEGAL_MOVE || !free_way(piece_row, piece_col, end_row, end_col))
+                        continue; // cannot legally move
+
+					// can move KING: if the piece was at the king's coords, change the king's coords for testing
+                    int test_king_row = (piece_row == king_row && piece_col == king_col) ? end_row : king_row;
+                    int test_king_col = (piece_row == king_row && piece_col == king_col) ? end_col : king_col;
+
+                    Piece* eaten_piece = nullptr;
+                    if (this->piece_exists_at(end_row, end_col))
+                    {
+                        eaten_piece = this->get_piece_at(end_row, end_col)->clone();
+                        if (eaten_piece->get_colour() == king_colour || check_eat(piece_row, piece_col, end_row, end_col) == ILLEGAL_MOVE)  // because of PAWN
+                            continue; // cannot capture own piece
+                        this->eat(piece_row, piece_col, end_row, end_col);
+                    } // if
+                    else
+                        this->move(piece_row, piece_col, end_row, end_col);
+
+                    bool checked_king = is_king_attacked(test_king_row, test_king_col);
+                    undo_move(piece_row, piece_col, end_row, end_col, eaten_piece);
+
+                    if (!checked_king)
+                        return true; // king is still okay
+                } // for
+        } // for
+    return false;
+} // can_move_any_piece

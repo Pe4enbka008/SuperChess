@@ -145,10 +145,6 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="chessgraphics\chessgraphics\Form1.resx" />
-    <EmbeddedResource Include="chessgraphics\chessgraphics\properties\Resources.resx" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
