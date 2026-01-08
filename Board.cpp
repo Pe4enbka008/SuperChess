@@ -339,12 +339,12 @@ bool Board::can_castle(int rook_row, int rook_col, int move_to_row, int move_to_
 /// <param name="rook_col">Col where rook stands (7/0)</param>
 void Board::castle(int rook_row, int rook_col)
 {
-    int king_col = 3;
-    int move_rook_to = 2, move_king_to = 1;
+    int king_col = 4;
+    int move_rook_to = king_col - 1, move_king_to = king_col - 2;
     if (rook_col > king_col)
     {
-        move_rook_to += 2; // 4
-        move_king_to = 5;
+        move_rook_to += 2; 
+        move_king_to = king_col + 2;
     } // if
 
     this->move(rook_row, rook_col, rook_row, move_rook_to);   // move rook

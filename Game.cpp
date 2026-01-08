@@ -210,12 +210,12 @@ int Game::eat_statement(string coords_from, string coords_to)
 			} // if
 
 			// calculate where rook and king moved to
-			int king_col = 3;
-			int move_rook_to = 2, move_king_to = 1;
+			int king_col = 4;
+			int move_rook_to = king_col - 1, move_king_to = king_col - 2;
 			if (start_col > king_col)
 			{
-				move_rook_to += 2; // 4
-				move_king_to = 5;
+				move_rook_to += 2;
+				move_king_to = king_col + 2;
 			} // if
 
 			this->board.get_piece_at(start_row, move_rook_to)->change_state();  // rook moved
